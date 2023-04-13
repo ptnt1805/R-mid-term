@@ -1,0 +1,191 @@
+#####2. Creat dataset
+
+#import library
+
+library(tidyverse) # for dataframe manipulation
+library(ggplot2) # for plotting
+library(readxl) #read file excel
+
+#get data
+df = read_excel ('C:\\Users\\ngoct\\Downloads\\040522 Data Mid-term test Final.xlsx')
+df
+
+# filter out the list of companies on HOSE
+df = filter(df,exchangename=='HOCHIMINH STOCK EXCHANGE')
+df
+
+
+set.seed(930) #random according student ID 
+data = df[sample(1:nrow(df),100),]  # get sample data
+data
+
+
+sum(is.na(data)) # check missing value
+
+#replace missing value by median values
+for (i in names(data)){
+  print(i)
+  print(paste('There are', sum(is.na(data[i])),'missing value in ',i,'column'))
+  if(i!= 'firmcode' & i!='firmname' & i!= 'exchangename' & i!='industry'){
+    medi= median(as.numeric(unlist(data[i])), na.rm = TRUE)
+    data[i][is.na(data[i])] = medi
+    print(paste('Solved. There is', sum(is.na(data[i])), 'missing value in ',i,'column'))
+  }
+}
+
+sum(is.na(data))
+
+view(data)
+
+
+#####3. Report
+
+
+#choose columns needed
+data_selected = data%>%select(firmcode,firmname,payable,industry)
+data_selected
+
+view(data_selected)
+
+#5 firms with highest trade credit and industries
+highest = data_selected %>% arrange(desc(payable))
+
+view(highest)
+
+
+#5 firms with lowest trade credit and industries
+lowest = data_selected %>% arrange(payable)
+view(lowest)
+
+#provide descriptive statistics with median, 
+#mean, max, min, standard deviation of trade credit of:
+
+#different categories of the discrete variable
+
+#create discrete variable
+data$firm_size = log(data$totalasset)
+
+view(data)
+smr = summary(data$firm_size)
+smr
+size = c()
+for (i in data$firm_size)
+  if (i >=smr[5]){
+    size = append(size,'big')
+  } else if (i<= smr[2]){
+    size = append(size,'small')
+  } else {
+    size = append(size,'medium')
+  }
+data$size = size
+
+discrete_variable_statitics = data %>%
+  group_by(size) %>%
+  summarise(  Median = median(payable)
+              , Mean = mean(payable)
+              , Min = min(payable)
+              , Max = max(payable)
+              , Standard_Deviation = sd(payable))
+
+view(discrete_variable_statitics)
+view(data)
+smr
+view(smr)
+
+
+# group of above median of the continous variable - totaldebt
+medi_debt = median(data$totaldebt)
+above_medi = data %>% 
+  filter(totaldebt>= medi_debt) %>%
+  summarise(  Median = median(payable)
+            , Mean = mean(payable)
+            , Min = min(payable)
+            , Max = max(payable)
+            , Standard_Deviation = sd(payable))
+above_medi
+view(above_medi)
+
+
+# group of below median of the continous variable
+below_medi = data %>% 
+  filter(totaldebt<= medi_debt) %>%
+  summarise(  Median = median(payable)
+              , Mean = mean(payable
+              , Min = min(payable)
+              , Max = max(payable)
+              , Standard_Deviation = sd(payable))
+below_medi
+view(below_medi)
+
+
+
+#####4. Data visualization 
+#1. provide histogram of trade credit
+
+ggplot(data, aes(x = payable)) +
+  geom_histogram()
+
+
+#2. provide scatter plot of trade credit with the continuous variable
+ggplot(data, aes(x = payable, y = totaldebt)) +
+  geom_point()
+
+#3.  provide boxplot of trade credit with the discrete variable 
+#(different colour for different categories of discrete variable)
+ggplot(data, aes(x = payable, y = size, fill= size)) +
+  geom_boxplot()+
+  coord_flip()
+
+#4. provide a plot that allow the combination of continuous, 
+#discrete variables and trade credit 
+ggplot(data, aes(x = payable, y = totaldebt, color= size)) +
+  geom_point()
+
+
+#####5. Regression
+
+
+plot(payable ~ totaldebt, data=data)
+
+plot(payable ~ firm_size, data=data)
+
+
+summary(payable.lm<-lm(payable ~ firm_size+totaldebt, data = data))
+
+
+#multicollinearity
+
+cor(data$firm_size, data$totaldebt)
+library(car)
+payable.lm<-lm(payable ~ firm_size+totaldebt, data = data)
+vif(payable.lm)
+
+#heteroskedasticity
+par(mfrow=c(2,2))
+plot(payable.lm)
+
+library(lmtest)
+lmtest::bptest(payable.lm)
+
+
+#####6. Using LOOP
+#1. Count the number of firms in an industry
+
+library(dplyr)
+
+data_count <- ata %>% group_by(industry) %>% 
+  summarise(total_count=n(),
+            .groups = 'drop')
+view(data_count)
+
+#2. 
+count_material = 0
+for (i in rownames(data)){
+  if (data[i, 'industry'] =='Basic Materials' & 
+      data[i,'payable']>mean(data$payable)){
+    count_material = count_material +1
+  }
+}
+print(paste('Basic Material with payable above mean value: ',count_material))
+
+
